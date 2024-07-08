@@ -59,7 +59,7 @@ class A3CParams:
     mlp_layers: int = 3
     """MLP Layers"""
     mlp_hidden_dim: int = 128
-    """MLP Hidden Dim"""
+    """MLP Hidden Dim"""    
     optim: Literal["adam"] = "adam"
     """Optimizer"""
     beta_1: float = 0.9
