@@ -1,11 +1,12 @@
 import os
 from datetime import datetime
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
+import yaml
 import tyro
 import gymnasium as gym
 from gymnasium.wrappers.time_limit import TimeLimit
 from toymeta.dark_room import DarkRoom
-from typing import Literal
+from typing import Literal, List
 import numpy as np
 
 from stable_baselines3 import A2C
@@ -16,13 +17,18 @@ from stable_baselines3.common.callbacks import CallbackList, BaseCallback, EvalC
 from stable_baselines3.common.logger import configure
 from stable_baselines3.common.monitor import Monitor
 
+from generate_goals import get_all_goals
+
 @dataclass
 class SetupDarkRoom:
     experiment_name: str = "darkroom"
-    "Experiment name (perfix)"
+    "experiment name (perfix)"
     
     size: int = 9
-    "Size of the room"
+    "size of the room"
+    
+    goal_index: int | None = None
+    "if set, the env will always be runned with the selected goal"
     
     random_start: bool = False
     "if False, the agent is starting from the center of the room"
@@ -45,17 +51,25 @@ class SetupDarkRoom:
         
     def _setup_experiment_name(self):
         self.now = datetime.now().strftime(f"%d-%b-%H-%M-%S")
-        self.experiment_name = f"{self.experiment_name}_{self.now}"
+        goal_str = f"_goal={self.goal_index:02d}" if isinstance(self.goal_index, int) else ""
+        self.experiment_name = f"{self.experiment_name}{goal_str}_{self.now}"
 
     def _setup_monitor_logs_dir(self):
         self.monitor_logs_dir = os.path.join(self.monitor_logs_dir, self.experiment_name)
         os.makedirs(self.monitor_logs_dir, exist_ok=True)
+    
+    @property
+    def goal(self) -> None | List[int]:
+        if isinstance(self.goal_index, int):
+            return get_all_goals(self.size)[self.goal_index]
+        return None
         
     def init_env(self, seed: int = 0) -> DarkRoom:
         env = DarkRoom(
             size = self.size,
             terminate_on_goal=self.terminate_on_goal,
             random_start=self.random_start,
+            goal=self.goal,
         )
         
         if isinstance(self.max_episode_lenght, int):
@@ -149,11 +163,14 @@ class Args:
     total_max_timesteps: int = int(1e7)
     "total timesteps"
     
-    eval_freq: int = int(1e4)
+    eval_freq: int = int(5e3)
     "frequency of evaluation in timesteps"
     
-    n_eval_episodes: int = 10
+    n_eval_episodes: int = 5
     "number of evaluation episodes"
+    
+    max_no_improvement_evals: int = 100
+    "StopTrainingOnNoModelImprovement parameter"
     
     def __post_init__(self):
         self.setup_tensorboard()
@@ -184,11 +201,16 @@ class Args:
     def setup_tensorboard(self):
         self.tensorboard_log_dir = os.path.join(self.tensorboard_log_dir, self.env.experiment_name)
         os.makedirs(self.tensorboard_log_dir)
+        
+    def print_args(self):
+        print("The following arguments will be used in the experiment:")
+        print(yaml.dump(asdict(self)))
     
 if __name__ == "__main__":
 
     # read arguments    
     config = tyro.cli(Args)
+    config.print_args()
     
     # setup enviroment
     envs = SubprocVecEnv(config.env.init_n_envs(num_envs=config.num_envs, seed=config.seed))  # training envs
@@ -212,24 +234,19 @@ if __name__ == "__main__":
     learning_hist_callback=LearningHistoryDarkRoomCallback(config.env.experiment_name)
     
     # Setup evaluation
-    # Stop training if there is no improvement after more than 3 evaluations
-    # stop_train_callback = StopTrainingOnNoModelImprovement(
-    #     max_no_improvement_evals=100, 
-    #     min_evals=5, 
-    #     verbose=config.verbose
-    # )
-    # eval_callback = EvalCallback(
-    #     eval_env, 
-    #     eval_freq=config.eval_freq, 
-    #     callback_after_eval=stop_train_callback, 
-    #     verbose=config.verbose
-    # )
+    # Stop training if there is no improvement after more than 100 evaluations
+    stop_train_callback = StopTrainingOnNoModelImprovement(
+        max_no_improvement_evals=config.max_no_improvement_evals, 
+        min_evals=config.n_eval_episodes, 
+        verbose=config.verbose
+    )
+    eval_callback = EvalCallback(
+        eval_env, 
+        eval_freq=config.eval_freq, 
+        callback_after_eval=stop_train_callback, 
+        verbose=config.verbose
+    )
+        
+    callbacks = CallbackList([learning_hist_callback, eval_callback])
+    model.learn(total_timesteps=config.total_max_timesteps, callback=callbacks)
     
-    for _ in range(config.n_epochs):
-        mean_reward, std_reward = evaluate_policy(model, eval_env, n_eval_episodes=config.n_eval_episodes)
-        print(f"Mean reward: {mean_reward} +/- {std_reward:.2f}")
-        model.learn(total_timesteps=config.eval_freq, reset_num_timesteps=False, callback=learning_hist_callback)
-    
-    # callbacks = CallbackList([learning_hist_callback, eval_callback])
-    # model.learn(total_timesteps=config.total_max_timesteps, callback=callbacks)
-
