@@ -55,7 +55,7 @@ dt = DecisionTransformer(
     state_dim=eval_env.observation_space.n, # 81
     action_dim=eval_env.action_space.n,
     seq_len=100,
-    episode_len=20,
+    # episode_len=20,
     embedding_dim=128,
     num_layers=4,
     num_heads=8,
@@ -77,7 +77,7 @@ trainloader_iter = iter(trainloader)
 # %%
 batch = next(trainloader_iter)
 # %%
-states, actions, returns, time_steps = [b.to(device) for b in batch]
+states, actions, rewards, time_steps = [b.to(device) for b in batch]
 # %%
 
 # # True value indicates that the corresponding key value will be ignored
@@ -86,17 +86,27 @@ states, actions, returns, time_steps = [b.to(device) for b in batch]
 predicted_actions = dt(
     states=states,
     actions=actions,
-    returns_to_go=returns,
-    time_steps=time_steps,
+    rewards=rewards,
 )
 # %%
-loss = F.mse_loss(predicted_actions, actions.detach(), reduction="none")
+predicted_actions.shape, states.shape
+
+# %%
+from torch.nn import functional as F  # noqa
+
+loss  = F.cross_entropy(
+    predicted_actions.flatten(0, 1),
+    actions.detach().flatten(0, 1),
+)
+# loss = F.mse_loss(predicted_actions, actions.detach(), reduction="none")
 # [batch_size, seq_len, action_dim] * [batch_size, seq_len, 1]
-loss = (loss * mask.unsqueeze(-1)).mean()
+# loss = (loss * mask.unsqueeze(-1)).mean()
 
 optim.zero_grad()
 loss.backward()
-if config.clip_grad is not None:
-    torch.nn.utils.clip_grad_norm_(model.parameters(), config.clip_grad)
+# if config.clip_grad is not None:
+    # torch.nn.utils.clip_grad_norm_(model.parameters(), config.clip_grad)
 optim.step()
 scheduler.step()
+
+# %%
