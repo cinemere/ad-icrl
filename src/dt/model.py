@@ -58,7 +58,7 @@ class TransformerBlock(nn.Module):
     def forward(
         self, x: torch.Tensor, padding_mask: Optional[torch.Tensor] = None
     ) -> torch.Tensor:
-        causal_mask = self.causal_mask[: x.shape[1], : x.shape[1]]
+        causal_mask = self.causal_mask[:x.shape[1], :x.shape[1]]
 
         norm_x = self.norm1(x)
         attention_out = self.attention(

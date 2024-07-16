@@ -89,12 +89,12 @@ class OneGoalSequenceDataset(IterableDataset):
         states = self.dataset["observations"][episode_idx:episode_idx+self.num_sampled_episodes, actor_idx].flatten().astype(int)
         actions = self.dataset["actions"][episode_idx:episode_idx+self.num_sampled_episodes, actor_idx].flatten().astype(int)
         rewards = self.dataset["rewards"][episode_idx:episode_idx+self.num_sampled_episodes, actor_idx].flatten()
-        time_steps = np.arange(self.seq_len) + episode_idx * self.episode_length
+        # time_steps = np.arange(self.seq_len) + episode_idx * self.episode_length
 
         # states = (states - self.state_mean) / self.state_std
         rewards = rewards * self.reward_scale
         
-        return states, actions, rewards, time_steps
+        return states, actions, rewards #, time_steps
     
     @property
     def max_episode_idx(self):

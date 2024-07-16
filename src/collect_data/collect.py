@@ -21,8 +21,7 @@ from .generate_goals import get_all_goals
 
 @dataclass
 class SetupDarkRoom:
-    experiment_name: str = "darkroom"
-    "experiment name (perfix)"
+    # ---- env geometry params ----   
     
     size: int = 9
     "size of the room"
@@ -39,6 +38,14 @@ class SetupDarkRoom:
     max_episode_lenght: int | None = 20
     "the length of the episode (TimeLimit wrapper)"
     
+    # ---- logging params ----
+    
+    experiment_name: str = "darkroom"
+    "experiment name (perfix)"
+
+    add_now2name: bool = True
+    "add now (datetime) to the experiment name"
+
     enable_monitor_logs: bool = True
     "enable sb3 Monitor wrapper (logs of reward, episode length and time)"
     
@@ -51,9 +58,13 @@ class SetupDarkRoom:
         
     def _setup_experiment_name(self):
         self.now = datetime.now().strftime(f"%d-%b-%H-%M-%S")
-        goal_str = f"_goal={self.goal_index:02d}" if isinstance(self.goal_index, int) else ""
-        self.experiment_name = f"{self.experiment_name}{goal_str}_{self.now}"
-
+    
+        if isinstance(self.goal_index, int): 
+            self.experiment_name = f"{self.experiment_name}-goal={self.goal_index:02d}"
+    
+        if self.add_now2name:
+            self.experiment_name = f"{self.experiment_name}_{self.now}"
+            
     def _setup_monitor_logs_dir(self):
         self.monitor_logs_dir = os.path.join(self.monitor_logs_dir, self.experiment_name)
         os.makedirs(self.monitor_logs_dir, exist_ok=True)
