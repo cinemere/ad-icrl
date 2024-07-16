@@ -86,12 +86,12 @@ class OneGoalSequenceDataset(IterableDataset):
         self.num_sampled_episodes = seq_len // info["traj_lens"]
 
     def __prepare_sample(self, episode_idx, actor_idx):
-        states = self.dataset["observations"][episode_idx:episode_idx+self.num_sampled_episodes, actor_idx].flatten()
-        actions = self.dataset["actions"][episode_idx:episode_idx+self.num_sampled_episodes, actor_idx].flatten()
+        states = self.dataset["observations"][episode_idx:episode_idx+self.num_sampled_episodes, actor_idx].flatten().astype(int)
+        actions = self.dataset["actions"][episode_idx:episode_idx+self.num_sampled_episodes, actor_idx].flatten().astype(int)
         rewards = self.dataset["rewards"][episode_idx:episode_idx+self.num_sampled_episodes, actor_idx].flatten()
         time_steps = np.arange(self.seq_len) + episode_idx * self.episode_length
 
-        states = (states - self.state_mean) / self.state_std
+        # states = (states - self.state_mean) / self.state_std
         rewards = rewards * self.reward_scale
         
         return states, actions, rewards, time_steps
