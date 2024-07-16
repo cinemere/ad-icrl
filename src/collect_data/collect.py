@@ -17,7 +17,7 @@ from stable_baselines3.common.callbacks import CallbackList, BaseCallback, EvalC
 from stable_baselines3.common.logger import configure
 from stable_baselines3.common.monitor import Monitor
 
-from generate_goals import get_all_goals
+from .generate_goals import get_all_goals
 
 @dataclass
 class SetupDarkRoom:
