@@ -98,6 +98,10 @@ class SetupDarkRoom:
                 return self.init_env(seed)
             return _init
         return [init(seed + rank) for rank in range(num_envs)]
+    
+    @classmethod
+    def get_cls(cls):
+        return cls
 
 
 class LearningHistoryDarkRoomCallback(BaseCallback):

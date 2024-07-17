@@ -42,6 +42,7 @@ class TrainConfig:
     checkpoints_path: Optional[str] = "saved_data/saved_models"
     project: str = 'AD'
     group: str = 'debug'
+    entity: str = 'albinakl'
     
     # ---- dataset params ----
     permutations_file: str = 'saved_data/permutations.txt'
@@ -90,7 +91,8 @@ class TrainConfig:
 
 def train(config: TrainConfig):
     
-    wandb.init(project=config.project, 
+    wandb.init(entity=config.entity,
+               project=config.project, 
                group=config.group, 
                name=config.env_config.experiment_name, 
                config=asdict(config))
@@ -138,7 +140,7 @@ def train(config: TrainConfig):
     dataloader_iter = iter(dataloader)
     for step in trange(config.num_updates, desc="Training"):
         batch = next(dataloader_iter)
-        print(batch)
+        # print(batch)
         states, actions, rewards = [b.to(device) for b in batch]
 
         with torch.cuda.amp.autocast():
@@ -191,10 +193,10 @@ def train(config: TrainConfig):
                                                         model, test_goal_idxs, 
                                                         config.eval_episodes, 
                                                         device, config.eval_seed)            
-            print(f"{eval_info_train=}\n"
-                  f"{debug_info_train=}\n"
-                  f"{eval_info_test=}\n"
-                  f"{debug_info_test=}\n")
+            # print(f"{eval_info_train=}\n"
+            #       f"{debug_info_train=}\n"
+            #       f"{eval_info_test=}\n"
+            #       f"{debug_info_test=}\n")
         
             model.train()
             wandb.log(

@@ -21,7 +21,7 @@ def evaluate_in_context(env_config: SetupDarkRoom,
     #     [lambda goal=goal: gym.make(env_name, goal_pos=goal) for goal in goals]
     # )
     vec_env = SyncVectorEnv(
-        [lambda goal_idx=goal_idx: env_config(goal_index=goal_idx,
+        [lambda goal_idx=goal_idx: env_config.get_cls()(goal_index=goal_idx,
                                               enable_monitor_logs=False).init_env()
         for goal_idx in goal_idxs])
 
