@@ -16,8 +16,10 @@ from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.callbacks import CallbackList, BaseCallback, EvalCallback, StopTrainingOnNoModelImprovement
 from stable_baselines3.common.logger import configure
 from stable_baselines3.common.monitor import Monitor
+from gymnasium.wrappers import RecordEpisodeStatistics
 
-from .generate_goals import get_all_goals
+
+from src.collect_data.generate_goals import get_all_goals
 
 @dataclass
 class SetupDarkRoom:
@@ -46,8 +48,11 @@ class SetupDarkRoom:
     add_now2name: bool = True
     "add now (datetime) to the experiment name"
 
-    enable_monitor_logs: bool = True
+    enable_monitor_logs: bool = False
     "enable sb3 Monitor wrapper (logs of reward, episode length and time)"
+    
+    enable_episode_stats_wrapper: bool = True
+    "add gymnasium.wrappers.RecordEpisodeStatistics to initialization"
     
     monitor_logs_dir: str = "saved_data/logs/"
     "directory for putting sb3 Monitor (logs of reward, episode length and time)"
@@ -88,6 +93,9 @@ class SetupDarkRoom:
         
         if self.enable_monitor_logs:  
             env = Monitor(env, self.monitor_logs_dir)
+            
+        if self.enable_episode_stats_wrapper:
+            env = RecordEpisodeStatistics(env)
         
         env.reset(seed=seed)
         return env
@@ -184,7 +192,7 @@ class Args:
     n_eval_episodes: int = 5
     "number of evaluation episodes"
     
-    max_no_improvement_evals: int = 100
+    max_no_improvement_evals: int = 20
     "StopTrainingOnNoModelImprovement parameter"
     
     def __post_init__(self):
@@ -242,7 +250,7 @@ if __name__ == "__main__":
                 gae_lambda=config.lambda_val,
                 ent_coef=config.entropy_bonus_weight,
                 use_rms_prop=config.use_rms_prop,  # "adam"
-                # tensorboard_log=config.tensorboard_log_dir,
+                tensorboard_log=config.tensorboard_log_dir,
                 policy_kwargs=config.policy_kwards,
     )
     model.set_logger(logger)

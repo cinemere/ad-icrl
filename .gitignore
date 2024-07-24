@@ -2,7 +2,7 @@
 wandb/
 saved_data/
 test/
-
+runs/
 
 # VSCode settins
 .vscode/
