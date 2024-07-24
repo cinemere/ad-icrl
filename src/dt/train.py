@@ -47,7 +47,7 @@ class TrainConfig:
     # ---- dataset params ----
     permutations_file: str = 'saved_data/permutations.txt'
     "file with permutations of goal idxs"
-    train_test_split: float = 0.3
+    train_test_split: float = 0.5
     "percent of test goals"
     filter_episodes: int = 1
     "shrink the dataset by filtering episodes"
@@ -62,11 +62,11 @@ class TrainConfig:
     learning_rate: float = 1e-4
     weight_decay: float = 1e-4
     betas: Tuple[float, float] = (0.9, 0.999)
-    warmup_steps: int = 1000 # 10_000
+    warmup_steps: int = 10_000 # 10_000
     warmup_ratio: float = 0.1
     clip_grad: Optional[float] = 1.0
 
-    batch_size: int = 8  # 512
+    batch_size: int = 128  # 512
     num_updates: int = 300_000
     "batch size (dataloader param)"    
     num_workers: int = 1
@@ -74,11 +74,11 @@ class TrainConfig:
 
     # ---- eval ----
     eval_freq: int = 1000
-    eval_episodes: int = 2
+    eval_episodes: int = 10
     eval_seed: int = 0
 
     # ---- debug ----
-    debug: bool = True
+    debug: bool = False
     
     def __post_init__(self):
         if self.debug:
