@@ -43,9 +43,9 @@ class TransformerBlock(nn.Module):
             embedding_dim, num_heads, attention_dropout, batch_first=True
         )
         self.mlp = nn.Sequential(
-            nn.Linear(embedding_dim, 4 * embedding_dim),
+            nn.Linear(embedding_dim, 32 * embedding_dim),
             nn.GELU(),
-            nn.Linear(4 * embedding_dim, embedding_dim),
+            nn.Linear(32 * embedding_dim, embedding_dim),
             nn.Dropout(residual_dropout),
         )
         # True value indicates that the corresponding position is not allowed to attend

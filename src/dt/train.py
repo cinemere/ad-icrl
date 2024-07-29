@@ -14,9 +14,10 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader
 from torch.nn import functional as F  # noqa
+from torch.optim.lr_scheduler import CosineAnnealingLR
 
 from src.collect_data.collect import SetupDarkRoom
-from src.dt.seq_dataset import SequenceDataset
+from src.dt.seq_dataset2 import SequenceDataset
 from src.dt.model import DecisionTransformer
 from src.dt.schedule import cosine_annealing_with_warmup
 from src.dt.eval import evaluate_in_context
@@ -32,7 +33,7 @@ def get_goal_idxs(permutations_file: str = 'saved_data/permutations.txt',
     test_size = int(len(goal_idxs) * train_test_split)
     train_idxs, test_idxs = goal_idxs[:-test_size], goal_idxs[-test_size:]
     if debug:
-        train_idxs, test_idxs = train_idxs[:3], test_idxs[:3]
+        train_idxs, test_idxs = train_idxs[:10], test_idxs[:10]
     return train_idxs, test_idxs
 
 @dataclass
@@ -58,12 +59,16 @@ class TrainConfig:
     embedding_dim: int = 128
     num_layers: int = 4
     num_heads: int = 4
+    attention_dropout: float = 0.5
+    dropout: float = 0.1
+    model_path: str = ""
+    
     # ---- optimizer params ----
     learning_rate: float = 1e-4
     weight_decay: float = 1e-4
     betas: Tuple[float, float] = (0.9, 0.999)
     warmup_steps: int = 10_000 # 10_000
-    warmup_ratio: float = 0.1
+    # warmup_ratio: float = 0.1
     clip_grad: Optional[float] = 1.0
 
     batch_size: int = 128  # 512
@@ -82,7 +87,8 @@ class TrainConfig:
     
     def __post_init__(self):
         if self.debug:
-            self.filter_episodes = 10
+            # self.filter_episodes = 10
+            ...
             
         if self.checkpoints_path:
             path = os.path.join(self.checkpoints_path, self.env_config.experiment_name)
@@ -121,7 +127,13 @@ def train(config: TrainConfig):
         embedding_dim=config.embedding_dim,
         num_layers=config.num_layers,
         num_heads=config.num_heads,
+        attention_dropout=config.attention_dropout,
+        residual_dropout=config.dropout,
+        embedding_dropout=config.dropout,
     ).to(device)
+    if config.model_path:
+        model.load_state_dict(torch.load(config.model_path, map_location=device))
+
 
     optim = torch.optim.AdamW(
             model.parameters(),
@@ -129,12 +141,17 @@ def train(config: TrainConfig):
             weight_decay=config.weight_decay,
             betas=config.betas,
     )
- 
-    scheduler = cosine_annealing_with_warmup(
+    
+    scheduler = CosineAnnealingLR(
         optimizer=optim,
-        warmup_steps=config.warmup_steps,
-        total_steps=config.num_updates,
+        eta_min=1e-6,
+        T_max=config.num_updates,   
     )
+    # scheduler = cosine_annealing_with_warmup(
+    #     optimizer=optim,
+    #     warmup_steps=config.warmup_steps,
+    #     total_steps=config.num_updates, # // 500,
+    # )
     scaler = torch.cuda.amp.GradScaler()
     
     dataloader_iter = iter(dataloader)
@@ -193,10 +210,10 @@ def train(config: TrainConfig):
                                                         model, test_goal_idxs, 
                                                         config.eval_episodes, 
                                                         device, config.eval_seed)            
-            # print(f"{eval_info_train=}\n"
-            #       f"{debug_info_train=}\n"
-            #       f"{eval_info_test=}\n"
-            #       f"{debug_info_test=}\n")
+            print("eval train:\n")
+            print(*eval_info_train.items(), sep="\n")
+            print("eval test:\n")
+            print(*eval_info_test.items(), sep="\n")
         
             model.train()
             wandb.log(
