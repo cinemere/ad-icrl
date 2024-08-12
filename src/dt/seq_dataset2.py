@@ -96,7 +96,7 @@ class OneGoalSequenceDataset(IterableDataset):
         end_step_idx = begin_step_idx + self.seq_len
         states = self.dataset["observations"][actor_idx, begin_step_idx:end_step_idx].flatten().astype(int)
         actions = self.dataset["actions"][actor_idx, begin_step_idx:end_step_idx].flatten().astype(int)
-        rewards = self.dataset["rewards"][actor_idx, begin_step_idx:end_step_idx].flatten().astype(np.float32)
+        rewards = self.dataset["rewards"][actor_idx, begin_step_idx:end_step_idx].flatten().astype(int) #np.float32)
         return states, actions, rewards
     
     @property

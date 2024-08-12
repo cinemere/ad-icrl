@@ -32,7 +32,8 @@ def evaluate_in_context(env_config: SetupDarkRoom,
         (model.seq_len, vec_env.num_envs), dtype=torch.long, device=device
     )
     rewards = torch.zeros(
-        (model.seq_len, vec_env.num_envs), dtype=torch.float32, device=device
+        (model.seq_len, vec_env.num_envs), dtype=torch.long, device=device
+        # (model.seq_len, vec_env.num_envs), dtype=torch.float32, device=device
     )
 
     # to track number of episodes for each goal and returns

@@ -31,23 +31,23 @@ class TransformerBlock(nn.Module):
     def __init__(
         self,
         seq_len: int,
-        embedding_dim: int,
+        hidden_dim: int,
         num_heads: int,
         attention_dropout: float,
         residual_dropout: float,
     ):
         super().__init__()
-        self.norm1 = nn.LayerNorm(embedding_dim)
-        self.norm2 = nn.LayerNorm(embedding_dim)
+        self.norm1 = nn.LayerNorm(hidden_dim)
+        self.norm2 = nn.LayerNorm(hidden_dim)
         self.drop = nn.Dropout(residual_dropout)
 
         self.attention = nn.MultiheadAttention(
-            embedding_dim, num_heads, attention_dropout, batch_first=True
+            hidden_dim, num_heads, attention_dropout, batch_first=True
         )
         self.mlp = nn.Sequential(
-            nn.Linear(embedding_dim, 32 * embedding_dim),
+            nn.Linear(hidden_dim, 4 * hidden_dim),
             nn.GELU(),
-            nn.Linear(32 * embedding_dim, embedding_dim),
+            nn.Linear(4 * hidden_dim, hidden_dim),
             nn.Dropout(residual_dropout),
         )
         # True value indicates that the corresponding position is not allowed to attend
@@ -62,20 +62,37 @@ class TransformerBlock(nn.Module):
     ) -> torch.Tensor:
         causal_mask = self.causal_mask[:x.shape[1], :x.shape[1]]
 
-        norm_x = self.norm1(x)
+        # pre-norm
+        # norm_x = self.norm1(x)
+        # attention_out = self.attention(
+        #     query=norm_x,
+        #     key=norm_x,
+        #     value=norm_x,
+        #     attn_mask=causal_mask,
+        #     key_padding_mask=padding_mask,
+        #     need_weights=False,
+        # )[0]
+        # # by default pytorch attention does not use dropout
+        # # after final attention weights projection, while minGPT does:
+        # # https://github.com/karpathy/minGPT/blob/7218bcfa527c65f164de791099de715b81a95106/mingpt/model.py#L70 # noqa
+        # x = x + self.drop(attention_out)
+        # x = x + self.mlp(self.norm2(x))
+
+        # post-norm
         attention_out = self.attention(
-            query=norm_x,
-            key=norm_x,
-            value=norm_x,
+            query=x,
+            key=x,
+            value=x,
             attn_mask=causal_mask,
             key_padding_mask=padding_mask,
             need_weights=False,
         )[0]
-        # by default pytorch attention does not use dropout
-        # after final attention weights projection, while minGPT does:
-        # https://github.com/karpathy/minGPT/blob/7218bcfa527c65f164de791099de715b81a95106/mingpt/model.py#L70 # noqa
-        x = x + self.drop(attention_out)
-        x = x + self.mlp(self.norm2(x))
+        # # by default pytorch attention does not use dropout
+        # # after final attention weights projection, while minGPT does:
+        # # https://github.com/karpathy/minGPT/blob/7218bcfa527c65f164de791099de715b81a95106/mingpt/model.py#L70 # noqa
+        x = self.norm1(x + self.drop(attention_out))
+        x = self.norm2(x + self.mlp(x))
+        
         return x
 
 
@@ -85,27 +102,28 @@ class DecisionTransformer(nn.Module):
         state_dim: int,
         action_dim: int,
         seq_len: int = 10,
-        # episode_len: int = 1000,
         embedding_dim: int = 64,
+        hidden_dim: int = 256,
         num_layers: int = 4,
         num_heads: int = 8,
         attention_dropout: float = 0.0,
         residual_dropout: float = 0.0,
         embedding_dropout: float = 0.0,
-        # max_action: float = 1.0,
     ):
         super().__init__()        
         self.state_emb = nn.Embedding(state_dim, embedding_dim)
         self.action_emb = nn.Embedding(action_dim, embedding_dim)
-        self.reward_emb = nn.Linear(1, embedding_dim)
+        self.reward_emb = nn.Embedding(2, embedding_dim)
+        # self.reward_emb = nn.Linear(1, embedding_dim)
 
         self.pos_enc = PositionalEncoding(embedding_dim, embedding_dropout, 3*seq_len)
 
+        self.emb2hid = nn.Linear(embedding_dim, hidden_dim)
         self.blocks = nn.ModuleList(
             [
                 TransformerBlock(
                     seq_len=3 * seq_len,
-                    embedding_dim=embedding_dim,
+                    hidden_dim=hidden_dim,
                     num_heads=num_heads,
                     attention_dropout=attention_dropout,
                     residual_dropout=residual_dropout,
@@ -113,10 +131,11 @@ class DecisionTransformer(nn.Module):
                 for _ in range(num_layers)
             ]
         )
-        self.action_head = nn.Linear(embedding_dim, action_dim)
+        self.action_head = nn.Linear(hidden_dim, action_dim)
         
         self.seq_len = seq_len
         self.embedding_dim = embedding_dim
+        self.hidden_dim = hidden_dim
         self.state_dim = state_dim
         self.action_dim = action_dim
         # self.episode_len = episode_len
@@ -145,16 +164,18 @@ class DecisionTransformer(nn.Module):
         
         state_emb = self.pos_enc(self.state_emb(states))
         act_emb = self.pos_enc(self.action_emb(actions))
-        rew_emb = self.pos_enc(self.reward_emb(rewards.unsqueeze(-1)))
+        rew_emb = self.pos_enc(self.reward_emb(rewards))
+        # rew_emb = self.pos_enc(self.reward_emb(rewards.unsqueeze(-1)))
         # [batch_size, seq_len, emb_dim]
 
         # [batch_size, seq_len * 3, emb_dim], (s_0, a_0, r_0, s_1, a_1, r_1, ...)
         sequence = (
-            torch.stack([state_emb, act_emb, rew_emb], dim=1)
-            .permute(0, 2, 1, 3)
+            torch.stack([state_emb, act_emb, rew_emb], dim=1)  # [batch_size, 3, seq_len, emb_dim]
+            .permute(0, 2, 1, 3)  # [batch_size, seq_len, 3, emb_dim]
             .reshape(batch_size, 3 * seq_len, self.embedding_dim)
         )
         # sequence = self.pos_enc(sequence)  # positional encoding should be per-timestep
+        sequence = self.emb2hid(sequence)
         
         if padding_mask is not None:
             # [batch_size, seq_len * 3], stack mask identically to fit the sequence
