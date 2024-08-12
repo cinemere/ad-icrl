@@ -22,6 +22,13 @@ model_path = "/home/cinemere/work/repo/ad-icrl/saved_data/saved_models/darkroom_
 model_path = "/home/cinemere/work/repo/ad-icrl/saved_data/saved_models/darkroom_27-Jul-11-40-20/model_120000.pt"
 input_args = "--config.seq-len 100 --config.eval-episodes 100 --config.eval-freq 1000 --config.learning-rate 0.0005 --config.weight-decay 0.001 --config.embedding-dim 64 --config.warmup-steps 1000 --config.debug"
 
+model_path = "/home/cinemere/work/repo/ad-icrl/saved_data/saved_models/colab-model/model_10000.pt"
+input_args = "--config.seq-len 100 --config.eval-episodes 100 --config.eval-freq 1000 --config.learning-rate 0.0004 --config.weight-decay 0.001 --config.embedding-dim 64 --config.warmup-steps 1000 --config.filter-episodes 2 --config.batch-size 512 --config.num-workers 10 --config.eval-freq 10000 --config.eval-episodes 50"
+
+# %%
+import os
+os.environ["DEVICE"] = "cuda"
+
 # %%
 import tyro
 from src.dt.train import TrainConfig
@@ -72,11 +79,11 @@ train_goal_idxs, test_goal_idxs = get_goal_idxs(
 from src.dt.eval import evaluate_in_context
 
 eval_info_test, debug_info_test = evaluate_in_context(
-    config.env_config, model, test_goal_idxs, 1000, 
+    config.env_config, model, test_goal_idxs[:3], 100, 
     device=device,
     seed=config.eval_seed + 102)
 eval_info_train, debug_info_train = evaluate_in_context(
-    config.env_config, model, train_goal_idxs, 1000, 
+    config.env_config, model, train_goal_idxs[:3], 100, 
     device=device,
     seed=config.eval_seed + 102)
 # %%
