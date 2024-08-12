@@ -1,0 +1,13 @@
+gymnasium
+matplotlib
+networkx
+numpy
+pandas
+PyYAML
+stable_baselines3
+tensorboard
+torch
+toymeta
+tqdm
+tyro
+wandb
