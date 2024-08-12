@@ -22,6 +22,8 @@ from src.dt.model import DecisionTransformer
 from src.dt.schedule import cosine_annealing_with_warmup
 from src.dt.eval import evaluate_in_context
 
+from src.collect_data.generate_goals import max_episode_reward
+
 DEVICE = os.getenv("DEVICE", "cpu")
 if "cuda" in DEVICE:
     assert torch.cuda.is_available()
@@ -70,10 +72,10 @@ class TrainConfig:
     model_path: str = ""
     
     # ---- optimizer params ----
-    learning_rate: float = 1e-4
+    learning_rate: float = 3e-4  # 1e-4
     weight_decay: float = 1e-4
     betas: Tuple[float, float] = (0.9, 0.999)
-    warmup_steps: int = 10_000 # 10_000
+    warmup_steps: int = 5_000 # 10_000
     # warmup_ratio: float = 0.1
     clip_grad: Optional[float] = 1.0
 
@@ -149,17 +151,17 @@ def train(config: TrainConfig):
             betas=config.betas,
     )
     
-    scheduler = CosineAnnealingLR(
-        optimizer=optim,
-        eta_min=1e-6,
-        T_max=config.num_updates,   
-    )
-    # scheduler = cosine_annealing_with_warmup(
+    # scheduler = CosineAnnealingLR(
     #     optimizer=optim,
-    #     warmup_steps=config.warmup_steps,
-    #     total_steps=config.num_updates, # // 500,
+    #     eta_min=1e-6,
+    #     T_max=config.num_updates,   
     # )
-    scaler = torch.cuda.amp.GradScaler()
+    scheduler = cosine_annealing_with_warmup(
+        optimizer=optim,
+        warmup_steps=config.warmup_steps,
+        total_steps=config.num_updates,
+    )
+    # scaler = torch.cuda.amp.GradScaler()
     
     dataloader_iter = iter(dataloader)
     for step in trange(config.num_updates, desc="Training"):
@@ -167,30 +169,30 @@ def train(config: TrainConfig):
         # print(batch)
         states, actions, rewards = [b.to(device) for b in batch]
 
-        with torch.cuda.amp.autocast():
-            predicted_actions = model(
-                states=states,
-                actions=actions,
-                rewards=rewards)
-            loss  = F.cross_entropy(
-                predicted_actions.flatten(0, 1),
-                actions.detach().flatten(0, 1))
+        # with torch.cuda.amp.autocast():
+        predicted_actions = model(
+            states=states,
+            actions=actions,
+            rewards=rewards)
+        loss  = F.cross_entropy(
+            predicted_actions.flatten(0, 1),
+            actions.detach().flatten(0, 1))
 
-        scaler.scale(loss).backward()
-        if config.clip_grad is not None:
-            scaler.unscale_(optim)
-            torch.nn.utils.clip_grad_norm_(model.parameters(), config.clip_grad)
-        scaler.step(optim)
-        scaler.update()
-        optim.zero_grad(set_to_none=True)
-        scheduler.step()
-         
-        # optim.zero_grad()
-        # loss.backward()
-        # # if config.clip_grad is not None:
-        #     # torch.nn.utils.clip_grad_norm_(model.parameters(), config.clip_grad)
-        # optim.step()
+        # scaler.scale(loss).backward()
+        # if config.clip_grad is not None:
+        #     scaler.unscale_(optim)
+        #     torch.nn.utils.clip_grad_norm_(model.parameters(), config.clip_grad)
+        # scaler.step(optim)
+        # scaler.update()
+        # optim.zero_grad(set_to_none=True)
         # scheduler.step()
+         
+        optim.zero_grad()
+        loss.backward()
+        if config.clip_grad is not None:
+            torch.nn.utils.clip_grad_norm_(model.parameters(), config.clip_grad)
+        optim.step()
+        scheduler.step()
         
         with torch.no_grad():
             a = torch.argmax(predicted_actions.flatten(0, 1), dim=-1)
@@ -218,9 +220,17 @@ def train(config: TrainConfig):
                                                         config.eval_episodes, 
                                                         device, config.eval_seed)            
             print("eval train:\n")
-            print(*eval_info_train.items(), sep="\n")
+            for goal_idx, logged_returns in eval_info_train.items():
+                print("goal:", goal_idx, 
+                      "max reward:", max_episode_reward(goal_idx),
+                      logged_returns)
+            # print(*eval_info_train.items(), sep="\n")
             print("eval test:\n")
-            print(*eval_info_test.items(), sep="\n")
+            for goal_idx, logged_returns in eval_info_test.items():
+                print("goal:", goal_idx, 
+                      "max reward:", max_episode_reward(goal_idx),
+                      logged_returns)
+            # print(*eval_info_test.items(), sep="\n")
         
             model.train()
             wandb.log(
@@ -254,6 +264,30 @@ def train(config: TrainConfig):
                     model.state_dict(),
                     os.path.join(
                         config.checkpoints_path, f"model_{step}.pt"
+                    ),
+                )
+                torch.save(
+                    optim.state_dict(),
+                    os.path.join(
+                        config.checkpoints_path, f"optim_{step}.pt"
+                    ),
+                )
+                torch.save(
+                    scheduler.state_dict(),
+                    os.path.join(
+                        config.checkpoints_path, f"scheduler_{step}.pt"
+                    ),
+                )
+                torch.save(
+                    debug_info_train, 
+                    os.path.join(
+                        config.checkpoints_path, f"debug_info_train_{step}.pt"
+                    ),
+                )
+                torch.save(
+                    debug_info_test, 
+                    os.path.join(
+                        config.checkpoints_path, f"debug_info_test_{step}.pt"
                     ),
                 )
                 
