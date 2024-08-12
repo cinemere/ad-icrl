@@ -143,9 +143,9 @@ class DecisionTransformer(nn.Module):
     ) -> torch.FloatTensor:
         batch_size, seq_len = states.shape[0], states.shape[1]
         
-        state_emb = self.state_emb(states)
-        act_emb = self.action_emb(actions)
-        rew_emb = self.reward_emb(rewards.unsqueeze(-1))
+        state_emb = self.pos_enc(self.state_emb(states))
+        act_emb = self.pos_enc(self.action_emb(actions))
+        rew_emb = self.pos_enc(self.reward_emb(rewards.unsqueeze(-1)))
         # [batch_size, seq_len, emb_dim]
 
         # [batch_size, seq_len * 3, emb_dim], (s_0, a_0, r_0, s_1, a_1, r_1, ...)
@@ -154,7 +154,7 @@ class DecisionTransformer(nn.Module):
             .permute(0, 2, 1, 3)
             .reshape(batch_size, 3 * seq_len, self.embedding_dim)
         )
-        sequence = self.pos_enc(sequence)
+        # sequence = self.pos_enc(sequence)  # positional encoding should be per-timestep
         
         if padding_mask is not None:
             # [batch_size, seq_len * 3], stack mask identically to fit the sequence
