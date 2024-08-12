@@ -10,23 +10,19 @@ def max_episode_reward(goal_idx: int, episode_lenght: int = 20, size: int = 9):
     goal_pos = get_all_goals(size)[goal_idx]
     x_steps = abs(center_pos[0] - goal_pos[0])
     y_steps = abs(center_pos[1] - goal_pos[1])
-    return episode_lenght - x_steps - y_steps
+    return min(episode_lenght - x_steps - y_steps + 1, episode_lenght)
 
 def save_goals(
         size: int = 9,
-        goals_file: str = "saved_data/goals.txt",
-        permutations_file: str = "saved_data/permutations.txt",
+        save_dir: str = "saved_data/",
     ):
     goals = get_all_goals(size)
     permutation = np.random.permutation(len(goals))
     
-    # save goals
-    os.makedirs(os.path.dirname(goals_file), exist_ok=True)
-    np.savetxt(goals_file, goals, fmt="%d")
+    # save outputs
+    os.makedirs(os.path.dirname(save_dir), exist_ok=True)
+    np.savetxt(os.path.join(save_dir, f"goals_{size}.txt"), goals, fmt="%d")
+    np.savetxt(os.path.join(save_dir, f"permutations_{size}.txt"), permutation, fmt="%d")
     
-    # save permutations
-    os.makedirs(os.path.dirname(permutations_file), exist_ok=True)
-    np.savetxt(permutations_file, permutation, fmt="%d")
-
 if __name__ == "__main__":
     tyro.cli(save_goals)
