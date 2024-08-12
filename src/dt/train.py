@@ -1,10 +1,10 @@
 # %%
 import os
 import tyro
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
 import itertools
 from collections import defaultdict
-from typing import Tuple, Optional
+from typing import Tuple, Optional, List
 from tqdm import tqdm
 from tqdm.auto import trange
 
@@ -26,7 +26,7 @@ DEVICE = os.getenv("DEVICE", "cpu")
 if "cuda" in DEVICE:
     assert torch.cuda.is_available()
 
-def get_goal_idxs(permutations_file: str = 'saved_data/permutations.txt',
+def get_goal_idxs(permutations_file: str = 'saved_data/permutations_9.txt',
                   train_test_split: float = 0.3,
                   debug: bool = False):
     goal_idxs = np.loadtxt(permutations_file, dtype=int)
@@ -35,6 +35,11 @@ def get_goal_idxs(permutations_file: str = 'saved_data/permutations.txt',
     if debug:
         train_idxs, test_idxs = train_idxs[:10], test_idxs[:10]
     return train_idxs, test_idxs
+
+LEARNING_HISTORY_DIRS = [
+    "/home/cinemere/work/repo/ad-icrl/saved_data/learning_history/ppo-01",
+    "/home/cinemere/work/repo/ad-icrl/saved_data/learning_history/ppo-02",
+    "/home/cinemere/work/repo/ad-icrl/saved_data/learning_history/ppo-03"]
 
 @dataclass
 class TrainConfig:
@@ -46,12 +51,13 @@ class TrainConfig:
     entity: str = 'albinakl'
     
     # ---- dataset params ----
-    permutations_file: str = 'saved_data/permutations.txt'
+    permutations_file: str = 'saved_data/permutations_9.txt'
     "file with permutations of goal idxs"
     train_test_split: float = 0.5
     "percent of test goals"
     filter_episodes: int = 1
     "shrink the dataset by filtering episodes"
+    learning_history_dirs: str | List[str] = field(default_factory=LEARNING_HISTORY_DIRS.copy)
     
     # ---- model params ----
     seq_len: int = 60
@@ -110,7 +116,8 @@ def train(config: TrainConfig):
     
     dataset = SequenceDataset(goal_idxs=train_goal_idxs, 
                               seq_len=config.seq_len, 
-                              filter_episodes=config.filter_episodes)
+                              filter_episodes=config.filter_episodes,
+                              learning_history_dirs=config.learning_history_dirs)
 
     dataloader = DataLoader(dataset,
                             batch_size=config.batch_size,
