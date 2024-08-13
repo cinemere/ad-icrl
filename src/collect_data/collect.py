@@ -58,6 +58,7 @@ class SetupDarkRoom:
     "directory for putting sb3 Monitor (logs of reward, episode length and time)"
 
     def __post_init__(self):
+        assert isinstance(self.goal_idx, (None, int))
         self._setup_experiment_name()
         self._setup_monitor_logs_dir()
         
@@ -76,9 +77,10 @@ class SetupDarkRoom:
     
     @property
     def goal(self) -> None | List[int]:
-        if isinstance(self.goal_index, int):
-            return get_all_goals(self.size)[self.goal_index]
-        return None
+        if self.goal_index is None:
+            return None
+
+        return get_all_goals(self.size)[self.goal_index]
         
     def init_env(self, seed: int = 0) -> DarkRoom:
         env = DarkRoom(
