@@ -31,7 +31,7 @@ if "cuda" in DEVICE:
 def get_goal_idxs(permutations_file: str = 'saved_data/permutations_9.txt',
                   train_test_split: float = 0.3,
                   debug: bool = False):
-    goal_idxs = np.loadtxt(permutations_file, dtype=int)
+    goal_idxs = np.loadtxt(permutations_file, dtype=int).tolist()
     test_size = int(len(goal_idxs) * train_test_split)
     train_idxs, test_idxs = goal_idxs[:-test_size], goal_idxs[-test_size:]
     if debug:
