@@ -57,7 +57,7 @@ def evaluate_in_context(env_config: SetupDarkRoom,
             states=states[-step:].permute(1, 0),
             actions=actions[-step:].permute(1, 0),
             rewards=rewards[-step:].permute(1, 0),
-        )[:, -1]
+        )[0][:, -1]  # )[:, -1]
         dist = torch.distributions.Categorical(logits=logits)
         # action = dist.sample()
         action = dist.mode

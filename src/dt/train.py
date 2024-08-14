@@ -5,7 +5,7 @@ from dataclasses import dataclass, asdict, field
 import yaml
 import itertools
 from collections import defaultdict
-from typing import Tuple, Optional, List
+from typing import Tuple, Optional, List, Literal
 from tqdm import tqdm
 from tqdm.auto import trange
 
@@ -76,6 +76,8 @@ class TrainConfig:
     embedding_dropout: float = 0.1
     ln_placem: Literal["postnorm", "prenorm"] = "postnorm"
     """Layer Norm Placement"""
+    add_reward_head: bool = False
+    """check reward predictor hypothesis"""
     
     # ---- optimizer params ----
     learning_rate: float = 3e-4  # 1e-4
@@ -153,9 +155,11 @@ def train(config: TrainConfig):
         attention_dropout=config.attention_dropout,
         residual_dropout=config.residual_dropout,
         embedding_dropout=config.embedding_dropout,
+        ln_placem=config.ln_placem,
+        add_reward_head=config.add_reward_head,
     ).to(device)
-    if config.model_path:
-        model.load_state_dict(torch.load(config.model_path, map_location=device))
+    # if config.model_path:
+    #     model.load_state_dict(torch.load(config.model_path, map_location=device))
 
 
     optim = torch.optim.AdamW(
@@ -184,13 +188,17 @@ def train(config: TrainConfig):
         states, actions, rewards = [b.to(device) for b in batch]
 
         # with torch.cuda.amp.autocast():
-        predicted_actions = model(
+        predicted_actions, predicted_rewards = model(
             states=states,
             actions=actions,
             rewards=rewards)
-        loss  = F.cross_entropy(
+        loss = F.cross_entropy(
             predicted_actions.flatten(0, 1),
             actions.detach().flatten(0, 1))
+        loss_rewards = 0 if predicted_rewards is None else \
+        F.binary_cross_entropy_with_logits(
+            predicted_rewards.flatten(0, 1),
+            rewards.detach().flatten(0, 1))
 
         # scaler.scale(loss).backward()
         # if config.clip_grad is not None:
@@ -202,7 +210,7 @@ def train(config: TrainConfig):
         # scheduler.step()
          
         optim.zero_grad()
-        loss.backward()
+        (loss + loss_rewards).backward()
         if config.clip_grad is not None:
             torch.nn.utils.clip_grad_norm_(model.parameters(), config.clip_grad)
         optim.step()

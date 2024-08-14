@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Literal
 import math
 import torch
 import torch.nn as nn
@@ -111,6 +111,7 @@ class DecisionTransformer(nn.Module):
         residual_dropout: float = 0.0,
         embedding_dropout: float = 0.0,
         ln_placem: Literal["postnorm", "prenorm"] = "postnorm",
+        add_reward_head: bool = False,
     ):
         super().__init__()        
         self.state_emb = nn.Embedding(state_dim, embedding_dim)
@@ -137,6 +138,9 @@ class DecisionTransformer(nn.Module):
             ]
         )
         self.action_head = nn.Linear(hidden_dim, action_dim)
+        self.add_reward_head = add_reward_head
+        if add_reward_head:
+            self.reward_head = nn.Linear(hidden_dim + action_dim, 1)
         
         self.seq_len = seq_len
         self.embedding_dim = embedding_dim
@@ -202,5 +206,14 @@ class DecisionTransformer(nn.Module):
 
         # [batch_size, seq_len, emb_dim] -> [batch_size, seq_len, action_dim]
         # predict actions only from state embeddings
-        sequence = self.action_head(sequence[:, 0::3])
-        return sequence
+        state_embs = sequence[:, 0::3]
+        
+        action_output = self.action_head(state_embs)
+        if self.add_reward_head:
+            action_embs = sequence[:, 1::3]
+                        
+            reward_output = self.reward_head(torch.cat((state_embs, action_embs), dim=-1))
+            # reward_output = self.reward_head(torch.cat((state_embs, action_output), dim=-1))
+            return action_output, reward_output
+        
+        return action_output, None

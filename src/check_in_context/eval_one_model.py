@@ -48,7 +48,7 @@ class Evaluator:
             Dict[int, str]: number of steps, path to the model
         """
         models = [name for name in os.listdir(self.model_dir) if "model" in name]
-        models = {int(name.rstrip(".pt").split("_")[-1]) : os.path.join(self.model_dir, name) for name in models}
+        models = {name.rstrip(".pt").split("_")[-1] : os.path.join(self.model_dir, name) for name in models}
         return models
     
     @cached_property
@@ -87,8 +87,8 @@ class Evaluator:
             num_layers=self.config.num_layers,
             num_heads=self.config.num_heads,
             attention_dropout=self.config.attention_dropout,
-            residual_dropout=self.config.dropout,
-            embedding_dropout=self.config.dropout,
+            residual_dropout=self.config.residual_dropout,
+            embedding_dropout=self.config.embedding_dropout,
         ).to(device)
         
         for n_steps, model_path in reversed(self.model_paths.items()):
@@ -101,8 +101,8 @@ class Evaluator:
             for n_repeat in range(n_repeats):
                 set_seed(seed + n_repeat)            
 
-                _eval_info_train, _ = evaluate_in_context(config.env_config, model, train_goal_idxs, eval_episodes, device)
-                _eval_info_test, _ = evaluate_in_context(config.env_config, model, test_goal_idxs, eval_episodes, device)
+                _eval_info_train, _ = evaluate_in_context(self.config.env_config, model, train_goal_idxs, eval_episodes, device)
+                _eval_info_test, _ = evaluate_in_context(self.config.env_config, model, test_goal_idxs, eval_episodes, device)
 
                 # # for debug:
                 # _eval_info_train = defaultdict(list)
@@ -150,7 +150,7 @@ class Evaluator:
 if __name__ == "__main__":
     config = tyro.cli(EvalConfig)
     
-    evaluator = Evalutor(
+    evaluator = Evaluator(
         model_dir=config.model_dir,
         out_dir=config.out_dir, 
     )
