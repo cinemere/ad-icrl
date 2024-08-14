@@ -3,6 +3,7 @@ wandb/
 saved_data/
 test/
 runs/
+cloned/
 
 # VSCode settins
 .vscode/
