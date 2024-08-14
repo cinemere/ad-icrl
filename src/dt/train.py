@@ -2,6 +2,7 @@
 import os
 import tyro
 from dataclasses import dataclass, asdict, field
+import yaml
 import itertools
 from collections import defaultdict
 from typing import Tuple, Optional, List
@@ -98,12 +99,19 @@ class TrainConfig:
             # self.filter_episodes = 10
             ...
             
-        if self.checkpoints_path:
+        if self.checkpoints_path is not None:
             path = os.path.join(self.checkpoints_path, self.env_config.experiment_name)
             os.makedirs(path, exist_ok=True)
             self.checkpoints_path = path
+            
+    def save_args(self):
+        config_file_path = os.path.join(self.checkpoints_path, "config.yaml")
+        with open(config_file_path, "w") as config_file:
+            config_file.write(yaml.safe_dump(asdict(self)))
+
 
 def train(config: TrainConfig):
+    config.save_args()
     
     wandb.init(entity=config.entity,
                project=config.project, 
