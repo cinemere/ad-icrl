@@ -315,7 +315,7 @@ def train(config: TrainConfig):
                 
     if config.checkpoints_path is not None:
         torch.save(
-            model.state_dict(), os.path.join(config.checkpoints_path, f"model_last.pt")
+            model.state_dict(), os.path.join(config.checkpoints_path, f"MODEL_last.pt")
         )
         
 if __name__ == "__main__":

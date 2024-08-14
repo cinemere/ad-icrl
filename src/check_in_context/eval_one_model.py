@@ -48,7 +48,8 @@ class Evaluator:
             Dict[int, str]: number of steps, path to the model
         """
         models = [name for name in os.listdir(self.model_dir) if "model" in name]
-        models = {name.rstrip(".pt").split("_")[-1] : os.path.join(self.model_dir, name) for name in models}
+        models = {int(name.rstrip(".pt").split("_")[-1]) : os.path.join(self.model_dir, name) for name in models}
+        models = dict(sorted(models.items()))
         return models
     
     @cached_property
