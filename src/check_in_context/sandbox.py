@@ -282,4 +282,103 @@ def animate_traj(env, states, actions, goal, key_pos=None, name=""):
 
 # %%
 tmp_env.state_to_pos(debug_info_test['states'])
+# %% -------------------------------------------
+path1 = "saved_data/saved_models/colab-model/aug-12/debug_info_test_60000.pt"
+path2 = "saved_data/saved_models/colab-model/aug-12/debug_info_train_60000.pt"
+
 # %%
+import torch 
+info_test = torch.load(path1)
+info_train = torch.load(path2)
+# %%
+info_test
+# %%
+from src.collect_data.generate_goals import max_episode_reward, get_all_goals
+
+i = 30
+# %%
+goal_idx = info_test['goal_idxs'][i]
+goal_idx
+# %%
+max_episode_reward(goal_idx)
+# %%
+# tmp_env = config.env_config.init_env()
+from src.collect_data.generate_goals import max_episode_reward, get_all_goals
+from src.collect_data.collect import SetupDarkRoom
+
+env = SetupDarkRoom(goal_index=55).init_env()
+print(get_all_goals()[55])
+# %%
+env.goal_pos
+# %%
+actions = info_test['actions'][:, i]
+# %%
+collect_states = []
+rewards = [0]
+returns = []
+state, _ = vec_env.reset()
+for action in actions.cpu().numpy():
+    plt.imshow(vec_env.envs[0].render())
+    print(f"{action=}")
+    state, reward, t1, t2, _ = vec_env.step([action])
+    print(f"{state=} {reward=} {t1+t2=}")
+    rewards += reward
+    if t1+t2:
+        returns.append(rewards[0])
+        rewards *= 0
+    # plt.imshow(env.render())
+    plt.show()    
+returns
+# %%
+# animate_traj(env, )
+info_test['states'][:, i]
+# %%
+from gymnasium.vector import SyncVectorEnv
+
+vec_env = SyncVectorEnv(
+    [lambda goal_idx=goal_idx: SetupDarkRoom.get_cls()(goal_index=goal_idx,
+                                            enable_monitor_logs=False, size=9).init_env()
+    for goal_idx in [0, 20]])
+# %%
+vec_env.envs[1].unwrapped.goal_pos
+# %%
+vec_env.step([0, 0])
+# %%
+import numpy as np
+def get_all_goals(size: int = 3):
+    return np.mgrid[0:size, 0:size].reshape(2, -1).T 
+
+# %%
+get_all_goals()
+# %%
+dir(vec_env)
+# %%
+vec_env.envs[0].unwrapped.goal_pos
+# %%
+vec_env.envs[1].size
+# %%
+import matplotlib.pyplot as plt
+plt.imshow(vec_env.envs[0].render())
+plt.show()
+plt.imshow(vec_env.envs[1].render())
+plt.show()
+# %%
+from src.collect_data.generate_goals import max_episode_reward, get_all_goals
+from src.collect_data.collect import SetupDarkRoom
+import numpy as np
+goal_idxs = np.array([ 0, 30, 67, 57, 47, 29, 38,  7, 41,  3])
+
+vec_env = SyncVectorEnv(
+    [lambda goal_idx=goal_idx: SetupDarkRoom(goal_index=goal_idx,
+                                            enable_monitor_logs=False, size=9).init_env()
+    for goal_idx in goal_idxs])
+# %%
+# %%
+[get_all_goals(size=9)[g] for g in goal_idxs]
+# %%
+# %%
+vec_env.envs[0].
+# %%
+vec_env.reset()
+# %%
+[vec_env.envs[i].unwrapped.goal_pos for i in range(len(goal_idxs))]
