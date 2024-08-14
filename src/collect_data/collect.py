@@ -58,7 +58,7 @@ class SetupDarkRoom:
     "directory for putting sb3 Monitor (logs of reward, episode length and time)"
 
     def __post_init__(self):
-        assert isinstance(self.goal_idx, (None, int))
+        assert isinstance(self.goal_index, (type(None), int))
         self._setup_experiment_name()
         self._setup_monitor_logs_dir()
         
