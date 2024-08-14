@@ -49,6 +49,7 @@ class TrainConfig:
     # ---- logging params ---
     env_config: SetupDarkRoom
     checkpoints_path: Optional[str] = "saved_data/saved_models"
+    load_from_checkpoint: Optional[str] = ""
     project: str = 'AD'
     group: str = 'debug'
     entity: str = 'albinakl'
@@ -61,28 +62,32 @@ class TrainConfig:
     filter_episodes: int = 1
     "shrink the dataset by filtering episodes"
     learning_history_dirs: str | List[str] = field(default_factory=LEARNING_HISTORY_DIRS.copy)
+    "where to load learning histories from"
     
     # ---- model params ----
     seq_len: int = 60
     "sequence length (steps in env in context)"
-    embedding_dim: int = 128
+    embedding_dim: int = 64
+    hidden_dim: int = 256
     num_layers: int = 4
     num_heads: int = 4
     attention_dropout: float = 0.5
-    dropout: float = 0.1
-    model_path: str = ""
+    residual_dropout: float = 0.1
+    embedding_dropout: float = 0.1
+    ln_placem: Literal["postnorm", "prenorm"] = "postnorm"
+    """Layer Norm Placement"""
     
     # ---- optimizer params ----
     learning_rate: float = 3e-4  # 1e-4
     weight_decay: float = 1e-4
     betas: Tuple[float, float] = (0.9, 0.999)
-    warmup_steps: int = 5_000 # 10_000
-    # warmup_ratio: float = 0.1
+    warmup_steps: int = 5_000  # 10_000
     clip_grad: Optional[float] = 1.0
 
+    # ---- dataloader params ---- 
     batch_size: int = 128  # 512
-    num_updates: int = 300_000
     "batch size (dataloader param)"    
+    num_updates: int = 300_000
     num_workers: int = 1
     "num_workers (dataloader param)"
 
@@ -142,11 +147,12 @@ def train(config: TrainConfig):
         action_dim=tmp_env.action_space.n,
         seq_len=config.seq_len,
         embedding_dim=config.embedding_dim,
+        hidden_dim=config.hidden_dim,
         num_layers=config.num_layers,
         num_heads=config.num_heads,
         attention_dropout=config.attention_dropout,
-        residual_dropout=config.dropout,
-        embedding_dropout=config.dropout,
+        residual_dropout=config.residual_dropout,
+        embedding_dropout=config.embedding_dropout,
     ).to(device)
     if config.model_path:
         model.load_state_dict(torch.load(config.model_path, map_location=device))
