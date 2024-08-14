@@ -198,7 +198,7 @@ def train(config: TrainConfig):
         loss_rewards = 0 if predicted_rewards is None else \
         F.binary_cross_entropy_with_logits(
             predicted_rewards.flatten(0, 1),
-            rewards.detach().flatten(0, 1))
+            rewards.detach().flatten(0, 1).float())
 
         # scaler.scale(loss).backward()
         # if config.clip_grad is not None:

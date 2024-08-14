@@ -140,7 +140,7 @@ class DecisionTransformer(nn.Module):
         self.action_head = nn.Linear(hidden_dim, action_dim)
         self.add_reward_head = add_reward_head
         if add_reward_head:
-            self.reward_head = nn.Linear(hidden_dim + action_dim, 1)
+            self.reward_head = nn.Linear(hidden_dim * 2, 1)
         
         self.seq_len = seq_len
         self.embedding_dim = embedding_dim
@@ -214,6 +214,6 @@ class DecisionTransformer(nn.Module):
                         
             reward_output = self.reward_head(torch.cat((state_embs, action_embs), dim=-1))
             # reward_output = self.reward_head(torch.cat((state_embs, action_output), dim=-1))
-            return action_output, reward_output
+            return action_output, reward_output.squeeze(-1)
         
         return action_output, None
