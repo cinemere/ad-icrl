@@ -133,6 +133,7 @@ class Evaluator:
             plt.legend()
             plt.title(f"In-context learning on {self.experiment_name} model \n({n_steps} learning steps, {n_repeats} seeds)")
             plt.savefig(os.path.join(self.out_dir, f"mean_eval_{self.experiment_name}_{n_steps}_{seed=}.png"))
+            plt.show()
 
             if only_last:
                 break
