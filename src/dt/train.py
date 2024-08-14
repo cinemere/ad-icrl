@@ -40,9 +40,9 @@ def get_goal_idxs(permutations_file: str = 'saved_data/permutations_9.txt',
     return train_idxs, test_idxs
 
 LEARNING_HISTORY_DIRS = [
-    "/home/cinemere/work/repo/ad-icrl/saved_data/learning_history/ppo-01",
-    "/home/cinemere/work/repo/ad-icrl/saved_data/learning_history/ppo-02",
-    "/home/cinemere/work/repo/ad-icrl/saved_data/learning_history/ppo-03"]
+    "saved_data/learning_history/ppo-01",
+    "saved_data/learning_history/ppo-02",
+    "saved_data/learning_history/ppo-03"]
 
 @dataclass
 class TrainConfig:
