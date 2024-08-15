@@ -90,6 +90,8 @@ class Evaluator:
             attention_dropout=self.config.attention_dropout,
             residual_dropout=self.config.residual_dropout,
             embedding_dropout=self.config.embedding_dropout,
+            ln_placem=self.config.ln_placem,
+            add_reward_head=self.config.add_reward_head,
         ).to(device)
         
         for n_steps, model_path in reversed(self.model_paths.items()):
