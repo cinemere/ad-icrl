@@ -12,7 +12,7 @@ pip install -r requirements/requirements.txt
 
 ## Environment Variables
 
-Set up environmental variable `PYTHONPATH` **is required** to run the project:
+Set up environmental variable `PYTHONPATH` **required** to run the project:
 
 ```bash
 export PYTHONPATH=.
@@ -22,7 +22,7 @@ Also you can set up:
 
 ```DEVICE```
 
-## Repository structure 
+## Repository structure
 
 ```text
 .
@@ -141,7 +141,11 @@ python3 src/check_in_context/eval_one_model.py \
 --model-dir /path/to/dir/with/model/and/config
 ```
 
-## Acknowledgements
+## Results and experiments 🖥️
+
+The **results and the experiments** can be found in this [wandb report](https://api.wandb.ai/links/albinakl/f69j5e1x).
+
+## Acknowledgements ⭐ 🌟 ⭐
 
 The code is based on the following implementations:
 
