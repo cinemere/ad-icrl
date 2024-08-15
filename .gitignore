@@ -1,5 +1,6 @@
 # Data
 wandb/
+wandb.tzr.gz
 saved_data/
 test/
 runs/
