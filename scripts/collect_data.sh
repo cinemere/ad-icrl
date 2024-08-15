@@ -3,7 +3,6 @@ export PYTHONPATH=.
 
 for i in {0..80}
 do
-    # echo "Welcome $i times"
     # python3 src/collect_data/collect.py --env.goal-index $i
     # python3 src/collect_data/ppo.py --env.goal-index $i --track --num-envs 5 --total-timesteps 20000 --learning-rate 0.01
     # python3 src/collect_data/ppo.py --env.goal-index $i --num-envs 10 --total-timesteps 20000 --learning-rate 0.001 --num-steps 10 --num-minibatches 1 --track
