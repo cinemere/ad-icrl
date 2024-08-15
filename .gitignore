@@ -1,7 +1,7 @@
 # Data
 wandb/
 wandb.tzr.gz
-saved_data/
+saved_data/*
 test/
 runs/
 cloned/
