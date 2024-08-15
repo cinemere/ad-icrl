@@ -18,7 +18,7 @@ from torch.nn import functional as F  # noqa
 from torch.optim.lr_scheduler import CosineAnnealingLR
 
 from src.collect_data.collect import SetupDarkRoom
-from src.dt.seq_dataset2 import SequenceDataset
+from src.dt.seq_dataset import SequenceDataset
 from src.dt.model import DecisionTransformer
 from src.dt.schedule import cosine_annealing_with_warmup
 from src.dt.eval import evaluate_in_context
