@@ -1,4 +1,3 @@
-# %%
 import os
 import tyro
 from dataclasses import dataclass, asdict, field
@@ -47,63 +46,54 @@ LEARNING_HISTORY_DIRS = [
 @dataclass
 class TrainConfig:
     # ---- logging params ---
-    env_config: SetupDarkRoom
-    checkpoints_path: Optional[str] = "saved_data/saved_models"
-    load_from_checkpoint: Optional[str] = ""
-    project: str = 'AD'
-    group: str = 'debug'
-    entity: str = 'albinakl'
-    
+    env_config: SetupDarkRoom  # Configuration for the environment setup
+    checkpoints_path: Optional[str] = "saved_data/saved_models"  # Path to save model checkpoints
+    project: str = 'AD'  # Name of the project
+    group: str = 'debug'  # Group name for organizing runs
+    entity: str = 'albinakl'  # Entity name for tracking experiments
+
     # ---- dataset params ----
-    permutations_file: str = 'saved_data/permutations_9.txt'
-    "file with permutations of goal idxs"
-    train_test_split: float = 0.5
-    "percent of test goals"
-    filter_episodes: int = 1
-    "shrink the dataset by filtering episodes"
-    learning_history_dirs: str | List[str] = field(default_factory=LEARNING_HISTORY_DIRS.copy)
-    "where to load learning histories from"
-    
+    permutations_file: str = 'saved_data/permutations_9.txt'  # File with permutations of goal indices
+    train_test_split: float = 0.5  # Percentage of data to be used for testing
+    filter_episodes: int = 1  # Number of episodes to filter from the dataset
+    learning_history_dirs: str | List[str] = field(default_factory=LEARNING_HISTORY_DIRS.copy)  # Directories to load learning histories from
+
     # ---- model params ----
-    seq_len: int = 60
-    "sequence length (steps in env in context)"
-    embedding_dim: int = 64
-    hidden_dim: int = 256
-    num_layers: int = 4
-    num_heads: int = 4
-    attention_dropout: float = 0.5
-    residual_dropout: float = 0.1
-    embedding_dropout: float = 0.1
-    ln_placem: Literal["postnorm", "prenorm"] = "postnorm"
-    """Layer Norm Placement"""
-    add_reward_head: bool = False
-    """check reward predictor hypothesis"""
+    seq_len: int = 60  # Length of the input sequence (number of steps in the environment)
+    embedding_dim: int = 64  # Dimensionality of the embedding layer
+    hidden_dim: int = 256  # Dimensionality of the hidden layers
+    num_layers: int = 4  # Number of layers in the model
+    num_heads: int = 4  # Number of attention heads
+    attention_dropout: float = 0.5  # Dropout rate for the attention layer
+    residual_dropout: float = 0.1  # Dropout rate for the residual connections
+    embedding_dropout: float = 0.1  # Dropout rate for the embedding layer
+    ln_placem: Literal["postnorm", "prenorm"] = "postnorm"  # Placement of Layer Normalization
+    add_reward_head: bool = False  # Flag to add a reward prediction head to the model
+    load_from_checkpoint: Optional[str] = ""  # Path to load a model from a checkpoint
     
     # ---- optimizer params ----
-    learning_rate: float = 3e-4  # 1e-4
-    weight_decay: float = 1e-4
-    betas: Tuple[float, float] = (0.9, 0.999)
-    warmup_steps: int = 5_000  # 10_000
-    clip_grad: Optional[float] = 1.0
+    learning_rate: float = 3e-4  # Learning rate for the optimizer
+    weight_decay: float = 1e-4  # Weight decay for regularization
+    betas: Tuple[float, float] = (0.9, 0.999)  # Coefficients used for computing running averages in Adam optimizer
+    warmup_steps: int = 5_000  # Number of warmup steps for learning rate scheduling  # 1000
+    clip_grad: Optional[float] = 1.0  # Gradient clipping value to prevent exploding gradients
 
     # ---- dataloader params ---- 
-    batch_size: int = 128  # 512
-    "batch size (dataloader param)"    
-    num_updates: int = 300_000
-    num_workers: int = 1
-    "num_workers (dataloader param)"
+    batch_size: int = 128  # Number of samples per batch for the dataloader # 512
+    num_updates: int = 300_000  # Total number of updates to perform during training
+    num_workers: int = 1  # Number of worker threads for data loading
 
     # ---- eval ----
-    eval_freq: int = 1000
-    eval_episodes: int = 10
-    eval_seed: int = 0
+    eval_freq: int = 1000  # Frequency of evaluation during training (in updates)
+    eval_episodes: int = 10  # Number of episodes to evaluate during each evaluation step
+    eval_seed: int = 0  # Seed for random number generation during evaluation
 
     # ---- debug ----
-    debug: bool = False
-    
+    debug: bool = False  # Flag to enable or disable debug mode
+   
     def __post_init__(self):
         if self.debug:
-            # self.filter_episodes = 10
+            # debug will use only 10 train and 10 test goals
             ...
             
         if self.checkpoints_path is not None:
@@ -158,9 +148,8 @@ def train(config: TrainConfig):
         ln_placem=config.ln_placem,
         add_reward_head=config.add_reward_head,
     ).to(device)
-    # if config.model_path:
-    #     model.load_state_dict(torch.load(config.model_path, map_location=device))
-
+    if config.load_from_checkpoint:
+        model.load_state_dict(torch.load(config.load_from_checkpoint, map_location=device))
 
     optim = torch.optim.AdamW(
             model.parameters(),
@@ -169,25 +158,17 @@ def train(config: TrainConfig):
             betas=config.betas,
     )
     
-    # scheduler = CosineAnnealingLR(
-    #     optimizer=optim,
-    #     eta_min=1e-6,
-    #     T_max=config.num_updates,   
-    # )
     scheduler = cosine_annealing_with_warmup(
         optimizer=optim,
         warmup_steps=config.warmup_steps,
         total_steps=config.num_updates,
     )
-    # scaler = torch.cuda.amp.GradScaler()
     
     dataloader_iter = iter(dataloader)
     for step in trange(config.num_updates, desc="Training"):
         batch = next(dataloader_iter)
-        # print(batch)
         states, actions, rewards = [b.to(device) for b in batch]
 
-        # with torch.cuda.amp.autocast():
         predicted_actions, predicted_rewards = model(
             states=states,
             actions=actions,
@@ -199,15 +180,6 @@ def train(config: TrainConfig):
         F.binary_cross_entropy_with_logits(
             predicted_rewards.flatten(0, 1),
             rewards.detach().flatten(0, 1).float())
-
-        # scaler.scale(loss).backward()
-        # if config.clip_grad is not None:
-        #     scaler.unscale_(optim)
-        #     torch.nn.utils.clip_grad_norm_(model.parameters(), config.clip_grad)
-        # scaler.step(optim)
-        # scaler.update()
-        # optim.zero_grad(set_to_none=True)
-        # scheduler.step()
          
         optim.zero_grad()
         (loss + loss_rewards).backward()
@@ -216,27 +188,26 @@ def train(config: TrainConfig):
         optim.step()
         scheduler.step()
         
+        wandb_log = {
+            "step": step,
+            "lr": scheduler.get_last_lr()[0],
+        }
+        
         with torch.no_grad():
             a = torch.argmax(predicted_actions.flatten(0, 1), dim=-1)
             t = actions.flatten()
             accuracy = torch.sum(a == t) / (config.batch_size * config.seq_len)
+            wandb_log['accuracy'] = accuracy
+            wandb_log['loss'] = loss.item()
             
             if predicted_rewards is not None:
                 r = (predicted_rewards.flatten() > 0.5).long()
                 t = rewards.flatten()
                 accuracy_reward = torch.sum(r == t) / (config.batch_size * config.seq_len)
+                wandb_log['accuracy_reward'] = accuracy_reward
+                wandb_log['loss_reward'] = loss_rewards.item()
 
-        wandb.log(
-            {
-                "loss": loss.item(),
-                "loss_reward": 0 if predicted_rewards is None else loss_rewards.item(),
-                "accuracy": accuracy,
-                "accuracy_reward": 0 if  predicted_rewards is None else accuracy_reward,
-                "step": step,
-                "lr": scheduler.get_last_lr()[0],
-            },
-            step=step,
-        )
+        wandb.log(wandb_log, step=step)
         
         if step % config.eval_freq == 0 or step == config.num_updates - 1:
             model.eval()
@@ -253,13 +224,11 @@ def train(config: TrainConfig):
                 print("goal:", goal_idx, 
                       "max reward:", max_episode_reward(goal_idx),
                       logged_returns)
-            # print(*eval_info_train.items(), sep="\n")
             print("eval test:\n")
             for goal_idx, logged_returns in eval_info_test.items():
                 print("goal:", goal_idx, 
                       "max reward:", max_episode_reward(goal_idx),
                       logged_returns)
-            # print(*eval_info_test.items(), sep="\n")
         
             model.train()
             wandb.log(
@@ -276,14 +245,6 @@ def train(config: TrainConfig):
                     "eval/test_goals/median_return": np.median(
                         [h[-1] for h in eval_info_test.values()]
                     ),
-                    # "eval/train_goals/graph": wandb.Image(pic_name_train),
-                    # "eval/test_goals/graph": wandb.Image(pic_name_test),
-                    # "eval/train_goals/video": wandb.Video(
-                    #     "basic_animation_train.gif"
-                    # ),
-                    # "eval/test_goals/video": wandb.Video(
-                    #     "basic_animation_test.gif"
-                    # ),
                     "epoch": step,
                 },
                 step=step,
@@ -305,18 +266,6 @@ def train(config: TrainConfig):
                     scheduler.state_dict(),
                     os.path.join(
                         config.checkpoints_path, f"scheduler_{step}.pt"
-                    ),
-                )
-                torch.save(
-                    debug_info_train, 
-                    os.path.join(
-                        config.checkpoints_path, f"debug_info_train_{step}.pt"
-                    ),
-                )
-                torch.save(
-                    debug_info_test, 
-                    os.path.join(
-                        config.checkpoints_path, f"debug_info_test_{step}.pt"
                     ),
                 )
                 
