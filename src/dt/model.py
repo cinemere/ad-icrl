@@ -21,8 +21,8 @@ class PositionalEncoding(nn.Module):
         self.dropout = nn.Dropout(dropout)
         self.register_buffer('pos_embedding', pos_embedding) # #[1, maxlen, emb_size]
         
+    # [batch_size, seq_len, emb_dim] -> [batch_size, seq_len, emb_dim]
     def forward(self, token_embedding: Tensor) -> Tensor:
-        # return self.dropout(token_embedding + self.pos_embedding[:token_embedding.size(0), :])
         return self.dropout(token_embedding + self.pos_embedding[:, :token_embedding.size(1), :])
 
 # Decision Transformer implementation
@@ -117,7 +117,6 @@ class DecisionTransformer(nn.Module):
         self.state_emb = nn.Embedding(state_dim, embedding_dim)
         self.action_emb = nn.Embedding(action_dim, embedding_dim)
         self.reward_emb = nn.Embedding(2, embedding_dim)
-        # self.reward_emb = nn.Linear(1, embedding_dim)
 
         self.pos_enc = PositionalEncoding(embedding_dim, embedding_dropout, 3*seq_len)
 
@@ -147,8 +146,6 @@ class DecisionTransformer(nn.Module):
         self.hidden_dim = hidden_dim
         self.state_dim = state_dim
         self.action_dim = action_dim
-        # self.episode_len = episode_len
-        # self.max_action = max_action
 
         self.apply(self._init_weights)
 
@@ -164,26 +161,24 @@ class DecisionTransformer(nn.Module):
 
     def forward(
         self,
-        states: torch.Tensor,  # [batch_size, seq_len]
-        actions: torch.Tensor,  # [batch_size, seq_len]
-        rewards: torch.Tensor,  # [batch_size, seq_len]
-        padding_mask: Optional[torch.Tensor] = None,  # [batch_size, seq_len]
+        states: torch.Tensor,                          # [batch_size, seq_len]
+        actions: torch.Tensor,                         # [batch_size, seq_len]
+        rewards: torch.Tensor,                         # [batch_size, seq_len]
+        padding_mask: Optional[torch.Tensor] = None,   # [batch_size, seq_len]
     ) -> torch.FloatTensor:
         batch_size, seq_len = states.shape[0], states.shape[1]
         
         state_emb = self.pos_enc(self.state_emb(states))
         act_emb = self.pos_enc(self.action_emb(actions))
         rew_emb = self.pos_enc(self.reward_emb(rewards))
-        # rew_emb = self.pos_enc(self.reward_emb(rewards.unsqueeze(-1)))
         # [batch_size, seq_len, emb_dim]
 
         # [batch_size, seq_len * 3, emb_dim], (s_0, a_0, r_0, s_1, a_1, r_1, ...)
         sequence = (
             torch.stack([state_emb, act_emb, rew_emb], dim=1)  # [batch_size, 3, seq_len, emb_dim]
-            .permute(0, 2, 1, 3)  # [batch_size, seq_len, 3, emb_dim]
+            .permute(0, 2, 1, 3)                               # [batch_size, seq_len, 3, emb_dim]
             .reshape(batch_size, 3 * seq_len, self.embedding_dim)
         )
-        # sequence = self.pos_enc(sequence)  # positional encoding should be per-timestep
     
         if self.embedding_dim != self.hidden_dim:
             sequence = self.emb2hid(sequence)
@@ -204,16 +199,14 @@ class DecisionTransformer(nn.Module):
             sequence = block(sequence, padding_mask=padding_mask)
         # sequence = self.out_norm(sequence)
 
-        # [batch_size, seq_len, emb_dim] -> [batch_size, seq_len, action_dim]
         # predict actions only from state embeddings
         state_embs = sequence[:, 0::3]
-        
         action_output = self.action_head(state_embs)
+        
         if self.add_reward_head:
             action_embs = sequence[:, 1::3]
-                        
+            # predict rewards from state and action embeddings
             reward_output = self.reward_head(torch.cat((state_embs, action_embs), dim=-1))
-            # reward_output = self.reward_head(torch.cat((state_embs, action_output), dim=-1))
             return action_output, reward_output.squeeze(-1)
         
         return action_output, None

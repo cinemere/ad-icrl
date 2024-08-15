@@ -1,6 +1,6 @@
 import itertools
 from collections import defaultdict
-from typing import List
+from typing import List, Literal
 from tqdm import tqdm
 
 import numpy as np
@@ -16,10 +16,8 @@ def evaluate_in_context(env_config: SetupDarkRoom,
                         goal_idxs: List[int], 
                         eval_episodes: int, 
                         device: torch.DeviceObjType, 
-                        seed: int | None = None):
-    # vec_env = SyncVectorEnv(
-    #     [lambda goal=goal: gym.make(env_name, goal_pos=goal) for goal in goals]
-    # )
+                        seed: int | None = None,
+                        mode: Literal["mode", "sample"] = "mode"):
     vec_env = SyncVectorEnv(
         [lambda goal_idx=goal_idx: env_config.get_cls()(goal_index=goal_idx,
                                               enable_monitor_logs=False).init_env()
@@ -33,7 +31,6 @@ def evaluate_in_context(env_config: SetupDarkRoom,
     )
     rewards = torch.zeros(
         (model.seq_len, vec_env.num_envs), dtype=torch.long, device=device
-        # (model.seq_len, vec_env.num_envs), dtype=torch.float32, device=device
     )
 
     # to track number of episodes for each goal and returns
@@ -59,8 +56,11 @@ def evaluate_in_context(env_config: SetupDarkRoom,
             rewards=rewards[-step:].permute(1, 0),
         )[0][:, -1]  # )[:, -1]
         dist = torch.distributions.Categorical(logits=logits)
-        # action = dist.sample()
-        action = dist.mode
+        
+        if mode == 'mode':  
+            action = dist.mode
+        else:
+            action = dist.sample()
 
         # query the world
         state, reward, terminated, truncated, _ = vec_env.step(action.cpu().numpy())

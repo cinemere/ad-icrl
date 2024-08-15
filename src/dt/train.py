@@ -2,19 +2,14 @@ import os
 import tyro
 from dataclasses import dataclass, asdict, field
 import yaml
-import itertools
-from collections import defaultdict
 from typing import Tuple, Optional, List, Literal
-from tqdm import tqdm
 from tqdm.auto import trange
 
 import wandb
-from gymnasium.vector import SyncVectorEnv
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
 from torch.nn import functional as F  # noqa
-from torch.optim.lr_scheduler import CosineAnnealingLR
 
 from src.data.env import SetupDarkRoom
 from src.dt.seq_dataset import SequenceDataset
@@ -87,6 +82,7 @@ class TrainConfig:
     eval_freq: int = 1000  # Frequency of evaluation during training (in updates)
     eval_episodes: int = 10  # Number of episodes to evaluate during each evaluation step
     eval_seed: int = 0  # Seed for random number generation during evaluation
+    mode: Literal["mode", "sample"] = "mode"  # Use argmax over model outputs or sample
 
     # ---- debug ----
     debug: bool = False  # Flag to enable or disable debug mode

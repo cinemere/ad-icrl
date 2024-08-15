@@ -1,7 +1,7 @@
 # %% ------------------------------------------
 
 import os
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Literal
 import yaml
 import tyro
 from dataclasses import asdict, dataclass
@@ -24,10 +24,11 @@ class EvalConfig:
     out_dir: str | None = None  # directory where to save outputs (othervise `model_dir` will be used)
     
     # --- call ---
-    seed: int = 0 # seed the evaluation
-    n_repeats: int = 5 # number of evaluations
-    eval_episodes: int = 100 # number of episodes to evaluate
-    only_last: bool = True # eval only the latest model in the dir
+    seed: int = 0  # seed the evaluation
+    n_repeats: int = 5  # number of evaluations
+    eval_episodes: int = 100  # number of episodes to evaluate
+    only_last: bool = True  # eval only the latest model in the dir
+    mode: Literal["mode", "sample"] = "mode"  # use argmax over model outputs or sample
 
 class Evaluator:
     def __init__(self, model_dir: str, out_dir: str | None = None):
@@ -66,9 +67,10 @@ class Evaluator:
 
     def __call__(self, 
                  seed: int = 0, 
-                 n_repeats: int = 5, # number of evaluations
-                 eval_episodes: int = 100, # number of episodes to evaluate
-                 only_last: bool = True, # eval only the latest model in the dir
+                 n_repeats: int = 5,  # number of evaluations
+                 eval_episodes: int = 100,  # number of episodes to evaluate
+                 only_last: bool = True,  # eval only the latest model in the dir,
+                 mode: Literal["mode", "sample"] = "mode",  # use argmax over model outputs or sample
         ) -> None:
         
         # initialize_model
@@ -81,7 +83,7 @@ class Evaluator:
 
         tmp_env = self.config.env_config.init_env()
         model = DecisionTransformer(
-            state_dim=tmp_env.observation_space.n, # 81
+            state_dim=tmp_env.observation_space.n,
             action_dim=tmp_env.action_space.n,
             seq_len=self.config.seq_len,
             embedding_dim=self.config.embedding_dim,
@@ -104,8 +106,10 @@ class Evaluator:
             for n_repeat in range(n_repeats):
                 set_seed(seed + n_repeat)            
 
-                _eval_info_train, _ = evaluate_in_context(self.config.env_config, model, train_goal_idxs, eval_episodes, device)
-                _eval_info_test, _ = evaluate_in_context(self.config.env_config, model, test_goal_idxs, eval_episodes, device)
+                _eval_info_train, _ = evaluate_in_context(self.config.env_config, model, train_goal_idxs, 
+                                                          eval_episodes, device, seed + n_repeat, mode)
+                _eval_info_test, _ = evaluate_in_context(self.config.env_config, model, test_goal_idxs, 
+                                                         eval_episodes, device, seed + n_repeat, mode)
 
                 # # for debug:
                 # _eval_info_train = defaultdict(list)
@@ -139,17 +143,6 @@ class Evaluator:
 
             if only_last:
                 break
-
-# %%
-# tmp_path = "/home/cinemere/work/repo/ad-icrl/saved_data/saved_models/darkroom_14-Aug-01-33-50"
-# ev = Evaluator(tmp_path, "tmp_dir")
-# ev.experiment_name
-# ev.model_paths
-# config = ev.config
-# ev(seed=0, n_repeats=2, eval_episodes=5, only_last=True)
-
-# %%
-
 
 if __name__ == "__main__":
     config = tyro.cli(EvalConfig)

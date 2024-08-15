@@ -1,4 +1,3 @@
-# %%
 import os
 import random
 from typing import Any, Dict, List, Tuple, Literal
@@ -6,7 +5,6 @@ from typing import Any, Dict, List, Tuple, Literal
 import numpy as np
 from torch.utils.data import IterableDataset
     
-# %%
 def load_learning_history(
     goal_idx: int = 0,
     exp_name: str = "darkroom",
