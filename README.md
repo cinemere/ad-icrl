@@ -7,7 +7,12 @@ Implementation of paper "In-context Reinforcement Learning with Algorithm Distil
 git clone ...
 cd ad-icrl
 python -m venv venv
-pip install -r requirements.txt
+pip install -r requirements/requirements.txt
+```
+Set up environmental variable `PYTHONPATH`:
+
+```bash
+export PYTHONPATH=.
 ```
 
 ## Quick start 🏃
