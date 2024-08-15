@@ -16,7 +16,7 @@ from torch.distributions.categorical import Categorical
 from torch.utils.tensorboard import SummaryWriter
 
 
-from src.collect_data.collect import SetupDarkRoom
+from src.data.env import SetupDarkRoom
 
 @dataclass
 class PPOConfig:

@@ -23,37 +23,6 @@ def save_goals(
     os.makedirs(os.path.dirname(save_dir), exist_ok=True)
     np.savetxt(os.path.join(save_dir, f"goals_{size}.txt"), goals, fmt="%d")
     np.savetxt(os.path.join(save_dir, f"permutations_{size}.txt"), permutation, fmt="%d")
-    
-from gymnasium.wrappers.time_limit import TimeLimit
-from toymeta.dark_room import DarkRoom
-
-def init_env(
-    seed: int = 0,
-    size: int = 9,
-    # goal: None | np.ndarray = None,
-    goal_idx: None | int = None,
-    terminate_on_goal: bool = False,
-    random_start: bool = False,
-    max_episode_lenght: None | int = 20,
-) -> DarkRoom:
-
-    if isinstance(goal_idx, int):
-        goal = get_all_goals(size=size)[goal_idx]
-    else:
-        goal = None
-
-    env = DarkRoom(
-        size = size,
-        terminate_on_goal=terminate_on_goal,
-        random_start=random_start,
-        goal=goal,
-    )
-    
-    if isinstance(max_episode_lenght, int):
-        env = TimeLimit(env, max_episode_steps=max_episode_lenght)
-    
-    env.reset(seed=seed)
-    return env
-    
+        
 if __name__ == "__main__":
     tyro.cli(save_goals)

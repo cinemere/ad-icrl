@@ -7,7 +7,7 @@ import numpy as np
 import torch
 from gymnasium.vector import SyncVectorEnv
 
-from src.collect_data.collect import SetupDarkRoom
+from src.data.env import SetupDarkRoom
 from src.dt.model import DecisionTransformer
 
 @torch.no_grad()

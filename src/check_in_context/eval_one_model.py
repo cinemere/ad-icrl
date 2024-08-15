@@ -12,7 +12,7 @@ import numpy as np
 import torch
 
 from src.dt.train import TrainConfig, get_goal_idxs
-from src.collect_data.collect import SetupDarkRoom
+from src.data.env import SetupDarkRoom
 from src.dt.utils import set_seed
 from src.dt.eval import evaluate_in_context
 from src.dt.model import DecisionTransformer

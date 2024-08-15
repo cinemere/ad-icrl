@@ -17,13 +17,13 @@ from torch.utils.data import DataLoader
 from torch.nn import functional as F  # noqa
 from torch.optim.lr_scheduler import CosineAnnealingLR
 
-from src.collect_data.collect import SetupDarkRoom
+from src.data.env import SetupDarkRoom
 from src.dt.seq_dataset import SequenceDataset
 from src.dt.model import DecisionTransformer
 from src.dt.schedule import cosine_annealing_with_warmup
 from src.dt.eval import evaluate_in_context
 
-from src.collect_data.generate_goals import max_episode_reward
+from src.data.generate_goals import max_episode_reward
 
 DEVICE = os.getenv("DEVICE", "cpu")
 if "cuda" in DEVICE:
