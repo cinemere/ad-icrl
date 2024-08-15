@@ -118,7 +118,7 @@ Use [notebooks/explore_dataset.ipynb]() to get the statistics about learned traj
 
 ### 2. Train AD
 
-**or** load trained models from gdrive via [link]()
+**or** load trained models from gdrive via [link](https://drive.google.com/drive/folders/1_pExW9O4SoaraeDZCu05xageE2HBFj_d)
 
 ```bash
 python src/dt/train.py
