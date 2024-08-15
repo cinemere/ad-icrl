@@ -1,3 +1,5 @@
 toymeta
 ipykernel
 matplotlib
+tyro
+tqdm
