@@ -6,6 +6,9 @@ test/
 runs/
 cloned/
 
+# do not ignore
+!saved_data/permutations_9.txt
+
 # VSCode settins
 .vscode/
 
