@@ -220,11 +220,18 @@ def train(config: TrainConfig):
             a = torch.argmax(predicted_actions.flatten(0, 1), dim=-1)
             t = actions.flatten()
             accuracy = torch.sum(a == t) / (config.batch_size * config.seq_len)
+            
+            if predicted_rewards is not None:
+                r = (predicted_rewards.flatten() > 0.5).long()
+                t = rewards.flatten()
+                accuracy_reward = torch.sum(r == t) / (config.batch_size * config.seq_len)
 
         wandb.log(
             {
                 "loss": loss.item(),
+                "loss_reward": 0 if predicted_rewards is None else loss_rewards.item(),
                 "accuracy": accuracy,
+                "accuracy_reward": 0 if  predicted_rewards is None else accuracy_reward,
                 "step": step,
                 "lr": scheduler.get_last_lr()[0],
             },
